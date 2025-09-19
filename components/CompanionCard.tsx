@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { addBookmark, removeBookmark } from "@/lib/actions/companion.actions";
+import { useNotification } from "@/components/NotificationProvider";
 
 interface CompanionCardProps {
   id: string;
@@ -17,11 +18,20 @@ interface CompanionCardProps {
 
 const CompanionCard = ({ id, name, topic, subject, duration, color, bookmarked }: CompanionCardProps) => {
     const pathname = usePathname();
+    const { showNotification } = useNotification();
+    
     const handleBookmark = async () => {
-      if (bookmarked) {
-        await removeBookmark(id, pathname);
-      } else {
-        await addBookmark(id, pathname);
+      try {
+        if (bookmarked) {
+          await removeBookmark(id, pathname);
+          showNotification("Bookmark removed successfully", "success");
+        } else {
+          await addBookmark(id, pathname);
+          showNotification("Bookmark added successfully", "success");
+        }
+      } catch (error) {
+        showNotification("Failed to update bookmark", "error");
+        console.error("Bookmark error:", error);
       }
     };
 
