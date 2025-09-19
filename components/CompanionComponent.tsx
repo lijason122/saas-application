@@ -70,7 +70,7 @@ const CompanionComponent: React.FC<CompanionComponentProps> = ({ companionId, su
             vapi.off('speech-start', onSpeechStart);
             vapi.off('speech-end', onSpeechEnd);
         }
-    }, []);
+    }, [companionId]);
 
     const toggleMicrophone = () => {
         const isMuted = vapi.isMuted();
@@ -80,6 +80,8 @@ const CompanionComponent: React.FC<CompanionComponentProps> = ({ companionId, su
 
     const handleCall = async () => {
         setCallStatus(CallStatus.CONNECTING);
+        // Clear previous session messages when starting a new session
+        setMessages([]);
 
         const assistantOverrides = {
             variableValues: { subject, topic, style },
@@ -94,6 +96,30 @@ const CompanionComponent: React.FC<CompanionComponentProps> = ({ companionId, su
     const handleDisconnect = () => {
         setCallStatus(CallStatus.FINISHED);
         vapi.stop();
+    };
+
+    const downloadTranscript = () => {
+        if (messages.length === 0) return;
+        
+        // Format messages for download
+        const transcriptContent = messages
+            .reverse() // Reverse to get chronological order
+            .map((message) => {
+                const speaker = message.role === 'assistant' ? name.split(' ')[0].replace(/[.,]/g, '') : userName;
+                return `${speaker}: ${message.content}`;
+            })
+            .join('\n\n');
+        
+        // Create and download file
+        const blob = new Blob([transcriptContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `transcript-${name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -127,6 +153,19 @@ const CompanionComponent: React.FC<CompanionComponentProps> = ({ companionId, su
                     <button className={cn('rounded-lg py-2 cursor-pointer transition-colors w-full text-white', callStatus === CallStatus.ACTIVE ? 'bg-red-700' : 'bg-primary', callStatus === CallStatus.CONNECTING && 'animate-pulse')} onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}>
                         {callStatus === CallStatus.ACTIVE ? 'End Session' : callStatus === CallStatus.CONNECTING ? 'Connecting...' : 'Start Session'}
                     </button>
+                    {callStatus === CallStatus.FINISHED && messages.length > 0 && (
+                        <button 
+                            className='btn-mic bg-green-600 hover:bg-green-700' 
+                            onClick={downloadTranscript}
+                            title="Download transcript"
+                        >
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 15.75L8.25 12L9.66 10.59L11.25 12.18V3H12.75V12.18L14.34 10.59L15.75 12L12 15.75Z" fill="white"/>
+                                <path d="M4 19H20V17H4V19Z" fill="white"/>
+                            </svg>
+                            <p className='max-sm:hidden'>Download Transcript</p>
+                        </button>
+                    )}
                 </div>
             </section>
             <section className='transcript'>
