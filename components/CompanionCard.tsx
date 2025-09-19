@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { addBookmark, removeBookmark } from "@/lib/actions/companion.actions";
 import { useNotification } from "@/components/NotificationProvider";
 
@@ -19,8 +20,15 @@ interface CompanionCardProps {
 const CompanionCard = ({ id, name, topic, subject, duration, color, bookmarked }: CompanionCardProps) => {
     const pathname = usePathname();
     const { showNotification } = useNotification();
+    const { isSignedIn } = useAuth();
     
     const handleBookmark = async () => {
+      // Check if user is signed in before allowing bookmark actions
+      if (!isSignedIn) {
+        showNotification("Please sign in to add bookmarks", "info");
+        return;
+      }
+
       try {
         if (bookmarked) {
           await removeBookmark(id, pathname);
